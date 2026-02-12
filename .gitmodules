@@ -1,0 +1,3 @@
+[submodule "/home/hojoon/hojoon_me/themes/PaperMod"]
+	path = /home/hojoon/hojoon_me/themes/PaperMod
+	url = https://github.com/adityatelange/hugo-PaperMod.git

@@ -1,0 +1,78 @@
+baseURL: "https://hojoon.me/"
+title: "Hojoon Kim"
+pagination:
+  pagerSize: 10
+theme: "PaperMod"
+
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+buildExpired: false
+
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON
+
+minify:
+  disableXML: false
+  minifyOutput: true
+
+menu:
+  main:
+    - name: Posts
+      url: /posts/
+      weight: 1
+    - name: Projects
+      url: /projects/
+      weight: 2
+    - name: About
+      url: /about/
+      weight: 3
+    - name: Search
+      url: /search/
+      weight: 4
+
+params:
+  env: production
+  description: "Hojoon Kim's personal blog and portfolio"
+  author: "Hojoon Kim"
+  DateFormat: "January 2, 2006"
+
+  defaultTheme: auto
+  disableThemeToggle: false
+
+  ShowReadingTime: true
+  ShowShareButtons: false
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowWordCount: false
+  ShowToc: true
+
+  profileMode:
+    enabled: true
+    title: "Hojoon Kim"
+    subtitle: "Hello, I'm Hojoon Kim. Welcome to my blog and portfolio."
+    buttons:
+      - name: Blog
+        url: /posts/
+      - name: Projects
+        url: /projects/
+
+  socialIcons:
+    - name: GitHub
+      url: "https://github.com/"
+
+  fuseOpts:
+    isCaseSensitive: false
+    shouldSort: true
+    location: 0
+    distance: 1000
+    threshold: 0.4
+    minMatchCharLength: 0
+    keys:
+      - title
+      - permalink
+      - summary
+      - content
