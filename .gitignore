@@ -3,3 +3,5 @@ node_modules/
 .hugo_build.lock
 resources/_gen/
 .omc/
+package.json
+package-lock.json
