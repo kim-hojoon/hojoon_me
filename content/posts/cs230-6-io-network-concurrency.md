@@ -136,7 +136,7 @@ stat("/path/to/file", &statbuf);
 
 대부분의 네트워크 애플리케이션은 client-server 모델을 따른다:
 
-```
+```text
 Client ──request──→ Server
 Client ←─response── Server
 ```
@@ -147,7 +147,7 @@ Client ←─response── Server
 
 ### 네트워크 계층
 
-```
+```text
 Application (HTTP, FTP, SMTP)
     ↕
 Transport (TCP, UDP)
@@ -228,13 +228,13 @@ close(clientfd);                                    // 3. 연결 종료
 웹 서버와 클라이언트 간 통신 프로토콜:
 
 **요청 (Request):**
-```
+```text
 GET /index.html HTTP/1.1
 Host: www.example.com
 ```
 
 **응답 (Response):**
-```
+```text
 HTTP/1.1 200 OK
 Content-Type: text/html
 Content-Length: 1234
@@ -449,7 +449,7 @@ sem_post(&sem);    // V 연산: 값을 1 증가, 대기 중인 스레드 깨움
 
 #### Producer-Consumer
 
-```
+```text
 Producer ──→ [Buffer (크기 n)] ──→ Consumer
 ```
 

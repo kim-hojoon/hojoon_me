@@ -26,7 +26,7 @@ Procedure = function = method = subroutine = handler — 모두 같은 개념이
 
 ### Stack 구조
 
-```
+```text
 높은 주소
 ┌─────────────┐
 │    ...      │

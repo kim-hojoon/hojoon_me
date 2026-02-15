@@ -16,7 +16,7 @@ TocOpen: true
 
 ## 1. 코드의 변환 과정
 
-```
+```text
 C 코드 → Assembly 코드 → Machine 코드 (Object Code)
 ```
 
@@ -51,7 +51,7 @@ ISA는 software와 hardware 사이의 인터페이스(약속)이다.
 ## 3. CPU 구조와 레지스터
 
 CPU의 기본 구성:
-```
+```text
 CPU: [Registers] ←→ [ALU]
          ↕
     Address Bus / Data Bus
@@ -135,7 +135,7 @@ leaq S, D     # S의 address mode expression 결과를 D에 저장
 
 ### Addressing Mode
 
-```
+```text
 D(Rb, Ri, S) = Rb + S·Ri + D
 ```
 
@@ -277,7 +277,7 @@ do {
 ```
 
 어셈블리 패턴:
-```
+```text
 loop:
     Body
     if (Test) goto loop
@@ -286,7 +286,7 @@ loop:
 ### while
 
 **Jump-to-middle 변환:**
-```
+```text
     goto test
 loop:
     Body
@@ -295,7 +295,7 @@ test:
 ```
 
 **Do-while 변환 (GCC -O1):**
-```
+```text
     if (!Test) goto done
 loop:
     Body

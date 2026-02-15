@@ -18,7 +18,7 @@ TocOpen: true
 
 ### 컴파일 과정
 
-```
+```text
 main.c ──→ [cpp, cc1, as] ──→ main.o ─┐
                                         ├──→ [Linker (ld)] ──→ prog (실행파일)
 sum.c  ──→ [cpp, cc1, as] ──→ sum.o  ─┘
@@ -89,7 +89,7 @@ Linux의 표준 object file 형식:
 ### Control Flow
 
 프로세서는 명령어를 순차적으로 실행한다:
-```
+```text
 a₁ → a₂ → a₃ → ... → aₙ
 ```
 
@@ -117,7 +117,7 @@ a₁ → a₂ → a₃ → ... → aₙ
 
 Exception은 **프로세서 상태 변화에 대한 응답**으로 OS 커널에 control을 넘기는 것이다.
 
-```
+```text
 User code 실행 중
     ↓ (event 발생)
 Exception handler 실행 (kernel mode)
