@@ -4,7 +4,9 @@ date: 2022-12-15
 draft: false
 tags: ["CS230", "Systems Programming", "KAIST", "x86-64", "Assembly"]
 categories: ["Computer Science"]
+series: ["CS230 시스템프로그래밍"]
 summary: "C 코드가 어셈블리와 기계어로 변환되는 과정, x86-64 레지스터, mov/leaq 명령어, 조건 분기와 반복문의 어셈블리 구현을 다룹니다."
+aliases: ["/posts/cs230-2-machine-basics/"]
 ShowToc: true
 TocOpen: true
 ---
@@ -354,5 +356,5 @@ switch (x) {
 
 ---
 
-*이전 글: [[CS230] 1. 데이터 표현](/posts/cs230-1-data-representation/)*
-*다음 글: [[CS230] 3. 어셈블리 심화](/posts/cs230-3-machine-advanced/)*
+*이전 글: [[CS230] 1. 데이터 표현](/posts/cs230/1-data-representation/)*
+*다음 글: [[CS230] 3. 어셈블리 심화](/posts/cs230/3-machine-advanced/)*

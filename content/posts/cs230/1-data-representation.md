@@ -4,7 +4,9 @@ date: 2022-12-15
 draft: false
 tags: ["CS230", "Systems Programming", "KAIST", "Data Representation"]
 categories: ["Computer Science"]
+series: ["CS230 시스템프로그래밍"]
 summary: "컴퓨터가 데이터를 표현하는 방법을 다룹니다. ASCII/Unicode 문자 인코딩부터 정수의 비트 표현(2의 보수), 부동소수점(IEEE 754)까지 정리합니다."
+aliases: ["/posts/cs230-1-data-representation/"]
 ShowToc: true
 TocOpen: true
 ---
@@ -367,4 +369,4 @@ double d = 1.0;    // 8 byte, double precision
 
 ---
 
-*다음 글: [[CS230] 2. 어셈블리와 기계어 기초](/posts/cs230-2-machine-basics/)*
+*다음 글: [[CS230] 2. 어셈블리와 기계어 기초](/posts/cs230/2-machine-basics/)*

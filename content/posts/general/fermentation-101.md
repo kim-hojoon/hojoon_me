@@ -5,6 +5,7 @@ draft: false
 tags: ["발효", "과학", "음식", "술", "치즈"]
 categories: ["Science"]
 summary: "남해 여행에서 시작된 호기심. 효모, 유산균, 초산균이 만들어내는 놀라운 음식들을 하나하나 따라가봅니다."
+aliases: ["/posts/fermentation-101/"]
 ShowToc: true
 TocOpen: true
 ---

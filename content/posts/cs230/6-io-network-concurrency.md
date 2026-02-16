@@ -4,7 +4,9 @@ date: 2022-12-15
 draft: false
 tags: ["CS230", "Systems Programming", "KAIST", "Unix IO", "Network", "Concurrency", "Threads"]
 categories: ["Computer Science"]
+series: ["CS230 시스템프로그래밍"]
 summary: "Unix I/O(파일 디스크립터, RIO), 네트워크 프로그래밍(소켓, HTTP), 동시성 프로그래밍(프로세스, 스레드, 동기화)을 다룹니다."
+aliases: ["/posts/cs230-6-io-network-concurrency/"]
 ShowToc: true
 TocOpen: true
 ---
@@ -490,7 +492,7 @@ Producer ──→ [Buffer (크기 n)] ──→ Consumer
 
 ---
 
-*이전 글: [[CS230] 5. 가상 메모리와 동적 할당](/posts/cs230-5-vm-malloc/)*
+*이전 글: [[CS230] 5. 가상 메모리와 동적 할당](/posts/cs230/5-vm-malloc/)*
 
 ---
 

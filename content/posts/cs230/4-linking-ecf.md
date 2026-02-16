@@ -4,7 +4,9 @@ date: 2022-12-15
 draft: false
 tags: ["CS230", "Systems Programming", "KAIST", "Linking", "ECF", "Signals", "Process"]
 categories: ["Computer Science"]
+series: ["CS230 시스템프로그래밍"]
 summary: "링커의 역할(심볼 해석, 재배치), 예외 제어 흐름(Exceptions, Process, Signals), 시스템 콜과 프로세스 관리를 다룹니다."
+aliases: ["/posts/cs230-4-linking-ecf/"]
 ShowToc: true
 TocOpen: true
 ---
@@ -344,5 +346,5 @@ Shell에서의 프로세스 관리:
 
 ---
 
-*이전 글: [[CS230] 3. 어셈블리 심화](/posts/cs230-3-machine-advanced/)*
-*다음 글: [[CS230] 5. 가상 메모리와 동적 할당](/posts/cs230-5-vm-malloc/)*
+*이전 글: [[CS230] 3. 어셈블리 심화](/posts/cs230/3-machine-advanced/)*
+*다음 글: [[CS230] 5. 가상 메모리와 동적 할당](/posts/cs230/5-vm-malloc/)*

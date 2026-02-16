@@ -4,6 +4,11 @@ pagination:
   pagerSize: 10
 theme: "PaperMod"
 
+taxonomies:
+  tag: tags
+  category: categories
+  series: series
+
 enableRobotsTXT: true
 buildDrafts: false
 buildFuture: false

@@ -4,7 +4,9 @@ date: 2022-12-15
 draft: false
 tags: ["CS230", "Systems Programming", "KAIST", "x86-64", "Stack", "Procedures"]
 categories: ["Computer Science"]
+series: ["CS230 시스템프로그래밍"]
 summary: "함수 호출의 어셈블리 구현(스택 프레임, caller/callee-saved), 배열과 구조체의 메모리 배치, 버퍼 오버플로 공격과 방어를 다룹니다."
+aliases: ["/posts/cs230-3-machine-advanced/"]
 ShowToc: true
 TocOpen: true
 ---
@@ -255,5 +257,5 @@ union U {
 
 ---
 
-*이전 글: [[CS230] 2. 어셈블리와 기계어 기초](/posts/cs230-2-machine-basics/)*
-*다음 글: [[CS230] 4. 링킹과 예외 제어 흐름](/posts/cs230-4-linking-ecf/)*
+*이전 글: [[CS230] 2. 어셈블리와 기계어 기초](/posts/cs230/2-machine-basics/)*
+*다음 글: [[CS230] 4. 링킹과 예외 제어 흐름](/posts/cs230/4-linking-ecf/)*

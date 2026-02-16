@@ -4,7 +4,9 @@ date: 2022-12-15
 draft: false
 tags: ["CS230", "Systems Programming", "KAIST", "Virtual Memory", "Malloc", "Page Table"]
 categories: ["Computer Science"]
+series: ["CS230 시스템프로그래밍"]
 summary: "가상 메모리의 원리(페이지 테이블, 주소 변환, TLB), 동적 메모리 할당(malloc/free, implicit free list, fragmentation)을 다룹니다."
+aliases: ["/posts/cs230-5-vm-malloc/"]
 ShowToc: true
 TocOpen: true
 ---
@@ -361,5 +363,5 @@ void *realloc(void *ptr, size_t size);
 
 ---
 
-*이전 글: [[CS230] 4. 링킹과 예외 제어 흐름](/posts/cs230-4-linking-ecf/)*
-*다음 글: [[CS230] 6. I/O, 네트워크, 동시성](/posts/cs230-6-io-network-concurrency/)*
+*이전 글: [[CS230] 4. 링킹과 예외 제어 흐름](/posts/cs230/4-linking-ecf/)*
+*다음 글: [[CS230] 6. I/O, 네트워크, 동시성](/posts/cs230/6-io-network-concurrency/)*

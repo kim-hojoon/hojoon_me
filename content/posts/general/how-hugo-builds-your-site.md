@@ -5,6 +5,7 @@ draft: false
 tags: ["Hugo", "Static Site Generator", "Web", "Tutorial"]
 categories: ["Technology"]
 summary: "마크다운 파일 하나가 어떻게 멋진 웹페이지로 변하는지, 이 블로그를 예시로 하나하나 따라가봅니다."
+aliases: ["/posts/how-hugo-builds-your-site/"]
 ShowToc: true
 TocOpen: true
 ---
