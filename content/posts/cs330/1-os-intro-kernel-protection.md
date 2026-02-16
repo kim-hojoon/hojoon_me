@@ -68,14 +68,13 @@ TocOpen: true
 ```text
                  OS Three Pillars
 
-    ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-    │              │   │              │   │              │
-    │ Virtualization│   │ Concurrency  │   │ Persistence  │
-    │  (가상화)      │   │   (동시성)    │   │   (영속성)    │
-    │              │   │              │   │              │
-    └──────────────┘   └──────────────┘   └──────────────┘
-         Process            Threads           Storage
-      CPU Scheduling    Synchronization    File Systems
+    ┌────────────────┐   ┌────────────────┐   ┌────────────────┐
+    │                │   │                │   │                │
+    │ Virtualization │   │  Concurrency   │   │  Persistence   │
+    │                │   │                │   │                │
+    └────────────────┘   └────────────────┘   └────────────────┘
+         Process            Threads            Storage
+      CPU Scheduling    Synchronization     File Systems
       Virtual Memory
 ```
 

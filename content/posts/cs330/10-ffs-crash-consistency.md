@@ -216,7 +216,7 @@ Step 1: Journal Write
 │ +-----+-----+-----+-----+-----+     │
 │   ↑                          ↑      │
 │   |                          |      │
-│   Transaction Begin     Transaction End
+│   TxBegin                    TxEnd  │
 └─────────────────────────────────────┘
 
 Step 2: Journal Commit

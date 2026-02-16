@@ -49,18 +49,18 @@ TocOpen: true
 HDD는 기계적(mechanical) 부품과 전자(electronic) 부품으로 구성된다.
 
 ```text
-                Spindle (회전축)
-                    |
-        +-----------+-----------+
-        |   Platter (원판)     |
-        |   - Surface (표면)   |
-        |   - Track (트랙)     |
-        |   - Sector (섹터)    |
-        +---------------------+
-              |
-         Arm Assembly (암 어셈블리)
-              |
-         Read-Write Head
+            Spindle
+                |
+        +---------------+
+        |   Platter     |
+        |   - Surface   |
+        |   - Track     |
+        |   - Sector    |
+        +---------------+
+                |
+          Arm Assembly
+                |
+          Read-Write Head
 ```
 
 **주요 구성 요소**:
