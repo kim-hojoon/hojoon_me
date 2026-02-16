@@ -40,57 +40,23 @@ TocOpen: true
 
 ### 1.2 인터럽트 처리 과정
 
-인터럽트가 발생하면 다음과 같은 절차를 거칩니다:
+인터럽트 발생 시 다음 절차를 거칩니다:
 
 ```text
 1. 인터럽트 발생
    ↓
-2. 현재 실행 중인 프로세스의 상태 저장
-   - PC (Program Counter), 레지스터 등을 인터럽트 스택에 저장
+2. 현재 프로세스 상태 저장 (PC, 레지스터 → 인터럽트 스택)
    ↓
-3. 인터럽트 벡터 테이블(IVT) 또는 인터럽트 디스크립터 테이블(IDT) 참조
-   - 인터럽트 번호에 해당하는 핸들러 주소 찾기
+3. 인터럽트 벡터 테이블(IVT/IDT)에서 핸들러 주소 찾기
    ↓
-4. 인터럽트 핸들러(Interrupt Handler/ISR) 실행
-   - 커널 모드로 전환하여 실행
-   - 인터럽트 처리 중에는 다른 인터럽트 비활성화
+4. 인터럽트 핸들러 실행 (커널 모드, 다른 인터럽트 비활성화)
    ↓
-5. 저장된 상태 복원 및 원래 실행으로 복귀
+5. 저장된 상태 복원 및 복귀
 ```
 
-### 1.3 인터럽트 스택(Interrupt Stack)
+**인터럽트 스택**: 프로세스별 커널 메모리에 위치하며, 유저 스택과 별도로 PC, 레지스터 등을 저장합니다.
 
-인터럽트가 발생하면 현재 프로세스의 상태를 저장해야 합니다. 이를 위해 **인터럽트 스택**을 사용합니다:
-
-- 프로세스별로 커널 메모리에 위치
-- 유저 스택과 별도로 존재
-- 저장 내용: PC, 레지스터, 플래그 등
-
-```text
-User Stack (유저 메모리)        Kernel Stack (커널 메모리)
-┌─────────────┐                ┌─────────────────┐
-│   Proc2     │                │                 │
-│   Proc1     │                │  Interrupt      │
-│   Main      │                │  Stack          │
-└─────────────┘                │  ┌───────────┐  │
-                               │  │ User CPU  │  │
-                               │  │ State     │  │
-                               │  └───────────┘  │
-                               └─────────────────┘
-```
-
-### 1.4 인터럽트 마스킹(Interrupt Masking)
-
-인터럽트 핸들러는 **인터럽트를 비활성화한 상태에서 실행**됩니다. 왜 그럴까요?
-
-- 인터럽트 핸들러 실행 중 또 다른 인터럽트가 발생하면 복잡도가 증가
-- 일관성(consistency) 문제 발생 가능
-
-x86 아키텍처에서는:
-- `CLI` (Clear Interrupt): 인터럽트 비활성화
-- `STI` (Set Interrupt): 인터럽트 활성화
-
-이러한 명령어들은 **특권 명령(privileged instruction)**으로 커널 모드에서만 실행 가능합니다.
+**인터럽트 마스킹**: 핸들러 실행 중 다른 인터럽트 발생을 방지하여 일관성을 유지합니다. x86에서는 `CLI`/`STI` 특권 명령으로 제어합니다.
 
 ---
 
@@ -184,51 +150,17 @@ System)    └──────────────────────
 
 ## 3. I/O와 DMA
 
-### 3.1 I/O 처리 방식
-
-CPU가 I/O를 효율적으로 처리하려면 어떻게 해야 할까요?
-
-**문제점**:
-- I/O 작업은 CPU에 비해 매우 느림
-- CPU가 I/O 완료를 대기하면 시간 낭비
-
-**해결책: DMA (Direct Memory Access)**
+I/O 작업은 CPU에 비해 매우 느려, CPU가 대기하면 시간 낭비가 발생합니다. **DMA(Direct Memory Access)**를 사용하면 I/O 컨트롤러가 CPU 개입 없이 메모리와 직접 데이터를 전송하고, 완료 시 인터럽트로 알립니다.
 
 ```text
 ┌───────────┐      (1) Initiate Block Read
 │ Processor │────────────────────────────────┐
-│   [Reg]   │                                │
-└───────────┘      (3) Read Done             │
-      ↓                                       ↓
-   Cache                           ┌──────────────────┐
-      ↓                            │                  │
-   Memory ←────(2) DMA Transfer────│  I/O Controller  │
-                                   │     [buffer]     │
+└───────────┘      (3) Read Done (Interrupt) ↓
+   Memory ←────(2) DMA Transfer────┌──────────────────┐
+                                   │  I/O Controller  │
                                    └──────────────────┘
                                             ↓
                                           Disk
-```
-
-DMA를 사용하면:
-1. CPU가 I/O 컨트롤러에게 작업 지시
-2. I/O 컨트롤러가 메모리와 직접 데이터 전송 (CPU 개입 없이)
-3. 작업 완료 시 인터럽트로 CPU에 알림
-4. CPU는 그 사이 다른 작업 수행 가능
-
-### 3.2 인터럽트를 통한 I/O 완료 통지
-
-```text
-                        Disk drive
-                          ┌──┐
-                          └──┘
-CPU ←─③ Interrupt ───┐     │
- ↑                    │  ② Queue command & ack
- │                    │     │
- │ ① send read        │  ┌──▼─────────┐
- │   command          │  │   Disk     │
- └────────────────────┴──│ controller │
-                         └────────────┘
-                      ④ perform disk read
 ```
 
 ---
@@ -282,29 +214,10 @@ Low Address
 
 ### 4.3 프로그램에서 프로세스로
 
-디스크에 저장된 프로그램이 프로세스가 되는 과정:
-
-```text
-    Disk                        Memory
-┌──────────┐                ┌──────────┐
-│  ┌────┐  │                │          │
-│  │code│  │───────┐        │  Code    │ ← PC
-│  └────┘  │       │        ├──────────┤
-│  ┌────┐  │       └────→   │  Data    │
-│  │data│  │                ├──────────┤
-│  └────┘  │                │  Heap    │
-│ program  │                │    ↓     │
-└──────────┘                │          │
-                            │    ↑     │
-                            │  Stack   │ ← SP
-                            └──────────┘
-```
-
-**로딩(Loading)**:
-1. 디스크에서 프로그램의 code와 data를 읽어옴
-2. 메모리에 프로세스 주소 공간 생성
-3. Stack과 Heap 영역 초기화
-4. PC를 첫 번째 명령어로 설정
+디스크의 프로그램이 메모리로 **로딩**되어 프로세스가 되는 과정:
+1. 디스크에서 code와 data를 읽어옴
+2. 메모리에 주소 공간 생성 (Stack/Heap 초기화)
+3. PC를 첫 번째 명령어로 설정
 
 ### 4.4 PCB (Process Control Block)
 
@@ -340,59 +253,29 @@ struct task_struct {  // Linux에서 약 6016 bytes (4.15.0-91)
 
 ### 4.5 프로세스 상태 전이
 
-프로세스는 생명주기 동안 다양한 상태를 거칩니다:
-
 ```text
                   Created
                      │
                      ↓
         ┌─────── Ready ────────┐
         │          ↑           │
-        │          │           │ Scheduled
-   I/O or         │ Time       │
-   event      exhausted         ↓
- completion       │         Running
-        │         │            │
-        │         │            │ I/O or
-        ↓         │            │ event wait
-      Blocked ────┘            │
-                               ↓ exit
+   I/O or    Time exhausted    │ Scheduled
+ completion       │             ↓
+        │         │         Running
+        ↓         │            │
+      Blocked ────┘            ↓ exit
                             Terminated
 ```
 
-- **Ready**: 실행 준비 완료, CPU 할당 대기
+- **Ready**: CPU 할당 대기
 - **Running**: CPU에서 실행 중
-- **Blocked**: I/O 작업 등을 기다리는 중
+- **Blocked**: I/O 대기
 
 ### 4.6 컨텍스트 스위치(Context Switch)
 
-CPU가 한 프로세스에서 다른 프로세스로 전환하는 과정:
+CPU가 프로세스 A에서 B로 전환 시: (1) 타이머 인터럽트 → (2) A의 상태를 PCB_A에 저장 → (3) B의 상태를 PCB_B에서 복원 → (4) B 실행 재개
 
-```text
-Process A                 OS Kernel               Process B
-  │                           │                      │
-  │ ──(1) Running──→          │                      │
-  │                           │                      │
-  │ ◄─(2) Timer Interrupt─    │                      │
-  │                           │                      │
-  │                        (3) Save                  │
-  │                        context of A              │
-  │                        to PCB_A                  │
-  │                           │                      │
-  │                        (4) Load                  │
-  │                        context of B              │
-  │                        from PCB_B                │
-  │                           │                      │
-  │                           │   ─(5) Resume──→     │
-  │                           │                      │
-  │                           │         ◄──(6) Running──
-```
-
-**컨텍스트 스위치 오버헤드**:
-- CPU 레지스터 저장/복원
-- TLB (Translation Lookaside Buffer) 플러시
-- 캐시 효율성 감소
-- 일반적으로 수 마이크로초 소요
+**오버헤드**: 레지스터 저장/복원, TLB 플러시, 캐시 효율성 감소 (수 마이크로초 소요)
 
 ---
 
@@ -402,7 +285,7 @@ UNIX/Linux는 프로세스 생성 및 관리를 위한 강력한 API를 제공�
 
 ### 5.1 fork(): 프로세스 복제
 
-`fork()`는 현재 프로세스의 복사본을 생성합니다:
+`fork()`는 현재 프로세스의 복사본을 생성합니다. 부모에게는 자식 PID를, 자식에게는 0을 반환합니다.
 
 ```c
 int child_pid = fork();
@@ -410,58 +293,26 @@ int child_pid = fork();
 if (child_pid == 0) {
     // 자식 프로세스
     printf("I am process #%d\n", getpid());
-    return 0;
 } else {
     // 부모 프로세스
     printf("I am parent of process #%d\n", child_pid);
-    return 0;
 }
 ```
 
-**fork()의 동작**:
-1. 새로운 PCB 생성
-2. 새로운 주소 공간 생성
-3. 부모의 주소 공간을 자식에게 복사
-4. 커널 리소스(열린 파일 등)를 자식이 공유하도록 설정
-5. PCB를 Ready 큐에 추가
-6. **부모에게는 자식 PID 반환, 자식에게는 0 반환**
-
-```text
-    fork
-   ┌────┐
-   │    │              After fork
-   │ P  │         ┌──────┐    ┌──────┐
-   │    │         │ P    │    │ C    │
-   └────┘         │ DATA │    │ DATA │
-                  │ stack│    │ stack│
-                  │ Heap │    │ Heap │
-                  └──────┘    └──────┘
-                  PID = 12870  PID = 14891
-```
+**동작**: PCB 생성 → 주소 공간 복사 → 커널 리소스 공유 설정 → Ready 큐 추가
 
 ### 5.2 exec(): 새 프로그램 실행
 
-`exec()` 계열 함수는 현재 프로세스의 주소 공간을 새로운 프로그램으로 덮어씁니다:
+현재 프로세스의 주소 공간을 새 프로그램으로 교체합니다. PID는 유지되며, 성공 시 리턴하지 않습니다.
 
 ```c
-if (child_pid == 0) {
-    // 자식 프로세스
-    if (execv(argv[0], argv) < 0) {
-        printf("%s: command not found\n", argv[0]);
-        exit(0);
-    }
+if (execv(argv[0], argv) < 0) {
+    printf("%s: command not found\n", argv[0]);
+    exit(0);
 }
 ```
 
-**exec() 실행 후**:
-- Text, Data, BSS, Heap을 새 프로그램으로 교체
-- Stack 초기화
-- PID는 변경되지 않음
-- 성공 시 리턴하지 않음 (새 프로그램이 실행되므로)
-
 ### 5.3 wait(): 자식 프로세스 대기
-
-부모 프로세스는 `wait()`로 자식의 종료를 기다립니다:
 
 ```c
 waitpid(pid, &status, 0);
@@ -472,26 +323,18 @@ waitpid(pid, &status, 0);
 간단한 셸은 fork-exec-wait 패턴을 사용합니다:
 
 ```c
-int main(void) {
-    char cmdline[MAXLINE];
-    char *argv[MAXARGS];
-    pid_t pid;
-    int status;
+while (getcmd(cmdline, MAXLINE) >= 0) {
+    parsecmd(cmdline, argv);
 
-    while (getcmd(cmdline, MAXLINE) >= 0) {
-        parsecmd(cmdline, argv);
-
-        if (!builtin_command(argv)) {
-            if ((pid = fork()) == 0) {
-                // 자식 프로세스: 명령어 실행
-                if (execv(argv[0], argv) < 0) {
-                    printf("%s: command not found\n", argv[0]);
-                    exit(0);
-                }
-            }
-            // 부모 프로세스: 자식 대기
-            waitpid(pid, &status, 0);
+    if (!builtin_command(argv)) {
+        if ((pid = fork()) == 0) {
+            // 자식: 명령어 실행
+            execv(argv[0], argv);
+            printf("%s: command not found\n", argv[0]);
+            exit(0);
         }
+        // 부모: 자식 대기
+        waitpid(pid, &status, 0);
     }
 }
 ```
@@ -500,33 +343,15 @@ int main(void) {
 
 ## 6. 정리
 
-이번 글에서는 운영체제의 핵심 메커니즘들을 다뤘습니다:
+이번 글에서는 운영체제의 핵심 메커니즘을 다뤘습니다:
 
-1. **인터럽트**: 하드웨어와 커널이 소통하는 방법
-   - 하드웨어 인터럽트 vs 소프트웨어 인터럽트(Trap)
-   - 인터럽트 핸들러와 인터럽트 스택
-   - 인터럽트 마스킹
+1. **인터럽트**: 하드웨어와 커널의 소통 방법 (하드웨어 인터럽트, 소프트웨어 트랩, 인터럽트 마스킹)
+2. **시스템 콜**: Trap 명령어를 통한 유저-커널 모드 전환과 커널 서비스 요청
+3. **I/O와 DMA**: CPU 개입 없이 메모리-I/O 직접 전송으로 효율성 향상
+4. **프로세스**: 실행 중인 프로그램의 추상화 (주소 공간, PCB, 상태 전이, 컨텍스트 스위치)
+5. **프로세스 API**: fork-exec-wait 패턴을 통한 프로세스 생성과 관리
 
-2. **시스템 콜**: 유저 프로그램이 커널 서비스를 이용하는 방법
-   - Trap 명령어를 통한 모드 전환
-   - 시스템 콜 테이블과 핸들러
-   - 안전한 매개변수 전달
-
-3. **I/O와 DMA**: 효율적인 I/O 처리
-   - DMA를 통한 CPU 부담 감소
-   - 인터럽트를 통한 I/O 완료 통지
-
-4. **프로세스**: 실행 중인 프로그램의 추상화
-   - 프로세스 주소 공간 구조
-   - PCB를 통한 프로세스 관리
-   - 프로세스 상태 전이와 컨텍스트 스위치
-
-5. **프로세스 API**: 프로세스 생성과 관리
-   - `fork()`: 프로세스 복제
-   - `exec()`: 새 프로그램 로드
-   - `wait()`: 자식 프로세스 대기
-
-다음 글에서는 프로세스보다 가벼운 실행 단위인 **스레드(Thread)**와 CPU **스케줄링** 알고리즘에 대해 알아보겠습니다.
+다음 글에서는 **스레드(Thread)**와 CPU **스케줄링** 알고리즘을 다룹니다.
 
 ---
 

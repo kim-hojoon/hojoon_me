@@ -129,50 +129,13 @@ FFS는 "관련된 것들을 가까이 배치"한다는 원칙을 다음과 같�
 
 ### Sub-block Allocation (서브블록)
 
-큰 블록 크기(4KB 또는 8KB)는 대용량 파일에 좋지만 작은 파일에는 공간 낭비가 심하다.
+큰 블록 크기(4KB 또는 8KB)는 대용량 파일에 좋지만 작은 파일에는 공간 낭비가 심하다. FFS는 **fragment** (서브블록)를 도입하여 블록을 더 작은 조각(예: 1KB)으로 나누고, 작은 파일이나 파일 끝부분에 사용한다. 파일이 커지면 fragment를 full block으로 변환한다.
 
-FFS는 이를 해결하기 위해 **fragment** (또는 sub-block)를 도입했다:
-- 블록을 더 작은 조각(예: 1KB)으로 나눔
-- 작은 파일이나 파일 끝부분에 fragment 사용
-- 파일이 커지면 fragment를 full block으로 변환
+### 기타 개선사항
 
-```text
-[Fragment 예시: Block size 4KB, Fragment size 1KB]
-
-파일 5KB 추가 전:
-+------+---+---+---+---+--------+--------+
-| AAAA | B | A | B |   |        |        |
-+------+---+---+---+---+--------+--------+
-   ↑     ↑       ↑
-   |     |       |
-   |     |       file B (2KB)
-   |     file B fragment
-   file A (5KB, 1 full block + 1 fragment)
-
-파일 5KB에 1KB 추가 후:
-+------+------+---+---+--------+--------+
-| AAAA | AAAA | B | A |        |        |
-+------+------+---+---+--------+--------+
-          ↑
-          |
-    새 블록에 재배치 (6KB = 1.5 blocks)
-```
-
-### 긴 파일 이름 지원
-
-- 원래 Unix FS: 파일 이름 최대 14자
-- FFS: 가변 길이 디렉토리 엔트리로 긴 이름 지원
-
-### Symbolic Link
-
-- Hard link의 제약을 극복
-- 다른 파일 시스템이나 디렉토리를 가리킬 수 있음
-
-### Parameterized Placement
-
-FFS는 디스크의 물리적 특성(회전 속도, 헤드 이동 시간 등)을 파라미터로 받아 배치를 최적화했다.
-
-### 성능 개선 결과
+- **긴 파일 이름**: 가변 길이 디렉토리 엔트리 (원래 14자 제한)
+- **Symbolic Link**: Hard link 제약 극복, 다른 파일 시스템 참조 가능
+- **Parameterized Placement**: 디스크 물리적 특성 반영한 배치 최적화
 
 FFS는 디스크 대역폭의 **14% ~ 47%**를 활용했다 (원래 Unix FS는 3~5%). 현대 파일 시스템(Linux ext2/3/4)도 FFS의 아이디어를 계승하고 있다.
 
@@ -222,13 +185,7 @@ FFS는 디스크 대역폭의 **14% ~ 47%**를 활용했다 (원래 Unix FS는 3
 
 ### fsck의 동작
 
-1. **Superblock 검사**: 파일 시스템 크기가 할당된 블록 수보다 큰지 확인
-2. **Free block 검사**: inode, indirect block, 디렉토리를 스캔하여 할당된 블록 확인
-3. **Inode 상태 검사**: 손상된 inode는 제거
-4. **Inode link count 검사**: 실제 디렉토리 엔트리 개수와 일치하는지 확인
-5. **Duplicate 검사**: 두 inode가 같은 블록을 가리키는지 확인
-6. **Bad block 검사**: 범위를 벗어난 포인터 확인
-7. **디렉토리 검사**: "."과 ".."가 올바른지 확인
+Superblock, free block, inode 상태, link count, duplicate, bad block, 디렉토리 등을 전체적으로 스캔하여 불일치를 수정한다.
 
 ### fsck의 문제점
 
@@ -285,88 +242,22 @@ Step 4: Free
 
 ### Journaling 단계별 상세
 
-**1. Journal Write (저널 쓰기)**
-- TxB (Transaction Begin): 트랜잭션 ID 포함
-- 메타데이터: IN', DB' (업데이트될 inode와 bitmap)
-- 데이터: Db (실제 데이터)
-- TxE (Transaction End): 트랜잭션 ID 포함
+**1. Journal Write**: TxB, 메타데이터(IN', DB'), 데이터(Db), TxE를 journal에 기록
+**2. Journal Commit**: TxE를 디스크에 쓰면 트랜잭션 committed (복구 가능)
+**3. Checkpoint**: Journal 내용을 최종 위치에 복사 (IN' → Inode, DB' → Bitmap, Db → Data)
+**4. Free**: Journal 영역 해제
 
-**2. Journal Commit (저널 커밋)**
-- TxE 블록을 디스크에 쓰기
-- TxE가 완료되면 트랜잭션이 **committed** 상태
-- 크래시 후 TxE가 있으면 복구 가능, 없으면 무시
+크래시 후 부팅 시 journal을 스캔하여 committed 트랜잭션(TxE 있음)을 찾아 replay하고 checkpointing을 다시 수행한다.
 
-**3. Checkpoint (체크포인트)**
-- Journal의 내용을 파일 시스템의 최종 위치에 쓰기
-- IN' → Inode 영역
-- DB' → Bitmap 영역
-- Db → Data 영역
-
-**4. Free (해제)**
-- Journal 영역을 free로 표시
-- Superblock에 journal 시작/끝 포인터 업데이트
-
-### 복구 과정
-
-크래시 후 부팅 시:
-1. Journal을 스캔
-2. Committed 트랜잭션(TxE 있음)을 찾아 replay
-3. Checkpointing을 다시 수행
-4. 파일 시스템 일관성 복원
-
-```text
-[복구 시나리오]
-
-시나리오 1: Journal Write 중 크래시
-┌─────────────────────────┐
-│ Journal                 │
-│ +-----+-----+-----+     │
-│ | TxB | IN' | DB' | (X) │
-│ +-----+-----+-----+     │
-│   ↑                     │
-│   |                     │
-│   TxE 없음 → 트랜잭션 무시
-└─────────────────────────┘
-→ 파일 시스템은 변경 전 상태 유지
-
-시나리오 2: Journal Commit 후, Checkpoint 전 크래시
-┌─────────────────────────────────┐
-│ Journal                         │
-│ +-----+-----+-----+-----+-----+ │
-│ | TxB | IN' | DB' | Db  | TxE | │
-│ +-----+-----+-----+-----+-----+ │
-│                            ↑    │
-│                            |    │
-│                     TxE 있음 → Replay
-└─────────────────────────────────┘
-→ Checkpointing 다시 수행
-→ 파일 시스템 일관성 복원
-```
+**복구 시나리오**:
+- Journal Write 중 크래시: TxE 없음 → 트랜잭션 무시, 변경 전 상태 유지
+- Checkpoint 전 크래시: TxE 있음 → Replay 후 checkpointing 재수행
 
 ### Metadata Journaling (Ordered Journaling)
 
-Data journaling은 모든 데이터를 journal에 쓰므로 오버헤드가 크다 (데이터를 두 번 씀).
+Data journaling은 데이터를 두 번 쓰므로 오버헤드가 크다. **Metadata journaling**은 메타데이터만 journal에 기록한다: 데이터를 먼저 최종 위치에 쓰고, 메타데이터(TxB, IN', DB', TxE)만 journal에 기록한 후 checkpoint한다. 이 방식은 **ext3의 기본 모드**(ordered mode)이며 훨씬 빠르다.
 
-**Metadata journaling**은 메타데이터만 journal에 기록한다:
-
-1. **Data write**: Db를 최종 위치에 먼저 쓰기
-2. **Journal metadata write**: TxB, IN', DB'만 journal에 쓰기
-3. **Journal commit**: TxE 쓰기
-4. **Checkpoint metadata**: IN', DB'를 최종 위치에 쓰기
-5. **Free**: Journal 해제
-
-이 방식은 **ext3의 기본 모드**(ordered mode)이며, data journaling보다 훨씬 빠르다.
-
-### Journaling의 장단점
-
-**장점**:
-- fsck보다 훨씬 빠름 (journal 영역만 스캔)
-- 메타데이터 일관성 보장
-
-**단점**:
-- 쓰기 성능 오버헤드 (특히 data journaling)
-- Journal 영역 필요
-- 파일 데이터 손실은 여전히 가능 (metadata journaling의 경우)
+fsck보다 빠르고 메타데이터 일관성을 보장하지만, 쓰기 오버헤드와 journal 영역이 필요하다.
 
 ## 8. 해결 방법 3: Copy-on-Write (COW)
 
@@ -374,79 +265,17 @@ Data journaling은 모든 데이터를 journal에 쓰므로 오버헤드가 크�
 
 ### COW 동작 방식
 
-```text
-[COW 파일 시스템 업데이트 과정]
+기존 데이터를 덮어쓰지 않고 새 위치에 쓴 후, 경로상의 메타데이터(inode, 루트)를 새로 생성한다. 마지막으로 슈퍼블록의 루트 포인터를 업데이트하는 한 번의 원자적 쓰기로 모든 변경사항이 반영된다.
 
-초기 상태:
-         Root
-          │
-    ┌─────┴─────┐
-    A           B
-    │           │
-  [Da]        [Db]
-
-파일 A에 새 데이터 추가:
-Step 1: 새 위치에 데이터 쓰기
-         Root
-          │
-    ┌─────┴─────┐
-    A           B         [Da']  (새 위치)
-    │           │
-  [Da]        [Db]
-
-Step 2: 새 inode 생성
-         Root
-          │
-    ┌─────┴─────┐
-    A           B    A'  (새 inode)
-    │           │     │
-  [Da]        [Db]  [Da']
-
-Step 3: 새 루트 블록 생성
-         Root'  (새 루트)
-          │
-    ┌─────┴─────┐
-    A'          B
-    │           │
-  [Da']       [Db]
-
-Step 4: 슈퍼블록 업데이트 (원자적)
-슈퍼블록의 루트 포인터를 Root → Root'로 변경
-→ 이 한 번의 쓰기로 모든 변경사항이 원자적으로 반영됨!
-```
-
-### COW의 장점
-
-- **원자적 업데이트**: 슈퍼블록 업데이트 하나로 모든 변경사항 반영
-- **Snapshot 지원**: 이전 버전의 루트를 유지하면 스냅샷
-- **Journal 불필요**: 모든 쓰기가 원자적
-
-### COW의 단점
-
-- **쓰기 증폭**: 데이터뿐 아니라 경로상의 모든 메타데이터 업데이트 필요
-- **Fragmentation**: 파일이 디스크 곳곳에 흩어짐
-- **성능**: 랜덤 쓰기 성능이 떨어질 수 있음
+원자적 업데이트와 스냅샷 지원이 장점이지만, 쓰기 증폭과 fragmentation이 단점이다.
 
 ## 9. 해결 방법 4: Log-Structured File System (LFS)
 
 **LFS**는 모든 쓰기를 순차적으로 로그처럼 기록한다.
 
-### 기본 아이디어
+디스크를 순차 로그로 취급하여 모든 업데이트를 로그 끝에 추가한다. In-place 업데이트가 없어 원자성을 보장한다.
 
-- 디스크를 거대한 순차 로그로 취급
-- 모든 업데이트(데이터, 메타데이터)를 로그 끝에 추가
-- In-place 업데이트 없음 → 원자성 보장
-- 쓰기 성능 최적화 (순차 쓰기만 수행)
-
-### LFS의 장단점
-
-**장점**:
-- 순차 쓰기로 최대 성능
-- 크래시 일관성 자연스럽게 보장
-
-**단점**:
-- 읽기 성능 (파일이 흩어져 있음)
-- Garbage collection 필요 (오래된 버전 정리)
+순차 쓰기로 최대 성능을 내고 크래시 일관성을 자연스럽게 보장하지만, 파일이 흩어져 읽기 성능이 떨어지고 garbage collection이 필요하다.
 
 ## 10. 정리: Crash Consistency 해결 방법 비교
 
@@ -461,32 +290,9 @@ Step 4: 슈퍼블록 업데이트 (원자적)
 
 ## 시리즈 마무리: CS330 Operating Systems
 
-이것으로 CS330 운영체제 시리즈의 모든 글을 마무리한다. 우리는 다음 주제들을 다루었다:
+이것으로 CS330 운영체제 시리즈를 마무리한다. 우리는 **가상화** (프로세스, 메모리), **동시성** (스레드, 락, 세마포어), **영속성** (디스크, 파일 시스템, 크래시 일관성)을 다루었다.
 
-**Part 1: Virtualization (가상화)**
-- CPU 가상화: 프로세스, 스케줄링
-- 메모리 가상화: 주소 공간, 페이징, 세그멘테이션, TLB
-
-**Part 2: Concurrency (동시성)**
-- 스레드와 락
-- 조건 변수와 세마포어
-- 동시성 버그와 해결 방법
-
-**Part 3: Persistence (영속성)**
-- I/O 장치와 디스크
-- 파일 시스템: VSFS, FFS
-- 크래시 일관성: Journaling, COW
-
-### 핵심 메시지
-
-운영체제는 **추상화와 보호의 예술**이다:
-- **추상화**: 복잡한 하드웨어를 단순한 인터페이스로 제공 (프로세스, 가상 메모리, 파일)
-- **보호**: 프로세스 간 격리, 권한 관리, 일관성 보장
-- **성능**: 제한된 자원을 효율적으로 관리 (스케줄링, 캐싱, 버퍼링)
-
-운영체제는 하드웨어와 소프트웨어 사이에서 끊임없이 트레이드오프를 조율한다. FFS의 지역성 최적화, Journaling의 안정성과 성능 균형이 그 좋은 예다.
-
-이 시리즈를 통해 우리는 컴퓨터 시스템의 가장 근본적인 소프트웨어인 운영체제가 어떻게 동작하는지, 그리고 왜 그렇게 설계되었는지를 이해할 수 있었다. 이러한 지식은 시스템 프로그래밍, 성능 최적화, 분산 시스템 등 더 깊은 학습의 토대가 될 것이다.
+운영체제는 **추상화와 보호의 예술**이다. 복잡한 하드웨어를 단순한 인터페이스로 제공하고, 프로세스를 격리하며, 제한된 자원을 효율적으로 관리한다. FFS의 지역성 최적화와 Journaling의 안정성-성능 균형이 그 좋은 예다. 이러한 지식은 시스템 프로그래밍과 성능 최적화의 토대가 될 것이다.
 
 ---
 

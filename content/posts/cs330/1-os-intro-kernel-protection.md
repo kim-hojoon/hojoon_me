@@ -107,40 +107,7 @@ TocOpen: true
 
 John Ousterhout의 말에 따르면, "컴퓨터 과학에서 가장 중요한 개념 하나를 꼽으라면 그것은 **추상화(Abstraction)**이다."
 
-### 추상화란?
-
-**추상화는 중요하지 않은 세부 사항을 무시함으로써 무언가를 더 쉽게 이해할 수 있게 만드는 과정 또는 결과물이다.**
-
-예를 들어, 사각형(Rectangle) 클래스를 생각해보자:
-
-```c
-class Rectangle {
-    int width;
-    int height;
-
-public:
-    double getArea();
-    int getWidth();
-    int getHeight();
-};
-```
-
-사용자는 사각형의 내부 구조(width, height가 어떻게 저장되는지)를 알 필요 없이, 단지 `getArea()` 같은 메서드만 사용하면 된다. 내부 세부 사항은 숨겨져 있다.
-
-### 컴퓨터 과학에서의 추상화
-
-```text
-Level of Abstraction (높음)
-        ↑
-        │  GUI / Object-Oriented Programming
-        │  Structured Programming (C, Pascal)
-        │  Assembly Language
-        │  Machine Language (01010101)
-        ↓
-    (낮음)                              Time →
-```
-
-추상화는 시간이 지남에 따라 점점 더 높은 레벨로 발전해왔다. 기계어에서 어셈블리, 고급 언어, 객체지향 프로그래밍으로 진화하면서 프로그래머가 신경 써야 할 세부 사항은 줄어들었다.
+**추상화는 중요하지 않은 세부 사항을 무시함으로써 무언가를 더 쉽게 이해할 수 있게 만드는 과정이다.** 예를 들어, 클래스 사용자는 내부 구조를 몰라도 public 메서드만으로 기능을 사용할 수 있다. 추상화는 기계어에서 어셈블리, 고급 언어, 객체지향으로 진화하면서 프로그래머가 신경 써야 할 세부 사항을 줄여왔다.
 
 ### 운영체제가 추상화하는 대상
 
@@ -274,29 +241,23 @@ OS 설계자는 다음 두 가지를 해야 한다:
 ### 프로세스가 있는 컴퓨터 시스템
 
 ```text
-    User               Compiler         Physical Memory
-     ↓                    ↓             ┌──────────────┐
-┌────────┐          ┌──────────┐       │   Machine    │ ← Process
-│ Source │ ─Edits──→│Executable│       │ Instructions │
-│  Code  │          │  Image:  │ ─OS───│──────────────│
-└────────┘          │Instructions│Copy │     Data     │
-                    │ and Data │       │──────────────│
-                    └──────────┘       │     Heap     │
-                                       │──────────────│
-                                       │     Stack    │
-                                       ├──────────────┤
-                                       │   Machine    │ ← OS Kernel
-                                       │ Instructions │
-                                       │──────────────│
-                                       │     Data     │
-                                       │──────────────│
-                                       │     Heap     │
-                                       │──────────────│
-                                       │     Stack    │
-                                       └──────────────┘
+Physical Memory
+┌──────────────┐
+│   Process    │ ← User Space
+│ Instructions │
+│     Data     │
+│     Heap     │
+│     Stack    │
+├──────────────┤
+│  OS Kernel   │ ← Kernel Space
+│ Instructions │
+│     Data     │
+│     Heap     │
+│     Stack    │
+└──────────────┘
 ```
 
-이제 **커널을 프로세스로부터 보호**해야 한다.
+컴파일된 실행 파일이 OS에 의해 메모리에 로드되면, 프로세스와 커널이 메모리에 공존한다. 이제 **커널을 프로세스로부터 보호**해야 한다.
 
 ---
 
@@ -328,28 +289,8 @@ OS 설계자는 다음 두 가지를 해야 한다:
 
 ### Dual Mode Operation
 
-현대 CPU는 **모드 비트(mode bit)**를 하드웨어로 제공한다:
+현대 CPU는 **모드 비트(mode bit)**를 하드웨어로 제공한다. 이론적으로 x86 아키텍처는 Ring 0~3의 4단계 특권 레벨을 지원하지만, 대부분의 OS는 **이중 모드(Dual Mode)**만 사용한다:
 
-```text
-┌──────────────────────────────────────┐
-│         Ring 3                       │  ← Least privileged
-│    ┌──────────────────────────┐      │
-│    │      Ring 2              │      │
-│    │  ┌────────────────┐      │      │
-│    │  │    Ring 1      │      │      │
-│    │  │ ┌────────────┐ │      │      │
-│    │  │ │  Ring 0    │ │      │      │  ← Most privileged
-│    │  │ │  (Kernel)  │ │      │      │
-│    │  │ └────────────┘ │      │      │
-│    │  │ Device drivers │      │      │
-│    │  └────────────────┘      │      │
-│    │   Device drivers         │      │
-│    └──────────────────────────┘      │
-│          Applications                │
-└──────────────────────────────────────┘
-```
-
-실제로는 대부분의 OS가 **이중 모드(Dual Mode)**만 사용한다:
 - **Kernel Mode (Ring 0)**: 모든 명령어 실행 가능
 - **User Mode (Ring 3)**: 제한된 명령어만 실행 가능
 
@@ -395,43 +336,10 @@ User Mode에서 이런 명령어를 실행하려고 하면 **예외(exception)**
 
 컴퓨터가 켜지면서 Kernel Mode로 시작하는 과정:
 
-```text
-    Boot Process Flow
-
-    ┌─────────────┐
-    │    Power    │
-    │      On     │
-    └──────┬──────┘
-           │
-           ↓
-    ┌─────────────┐
-    │    BIOS     │  ← Kernel Mode
-    │ (Firmware)  │
-    └──────┬──────┘
-           │
-           ↓
-    ┌─────────────┐
-    │ Boot Loader │  ← Kernel Mode
-    │  (e.g GRUB) │
-    └──────┬──────┘
-           │
-           ↓
-    ┌─────────────┐
-    │ OS Kernel   │  ← Kernel Mode
-    │    Init     │
-    └──────┬──────┘
-           │
-           ↓
-    ┌─────────────┐
-    │ User Space  │  ← User Mode
-    │  Programs   │
-    └─────────────┘
-```
-
-1. **Power On**: CPU는 미리 정해진 주소의 펌웨어(BIOS/UEFI) 실행
-2. **BIOS**: 하드웨어 초기화 및 부트 로더 로딩
-3. **Boot Loader**: 디스크에서 OS 커널을 메모리로 로드
-4. **OS Init**: 커널 초기화 및 시스템 서비스 시작
+1. **Power On**: CPU는 미리 정해진 주소의 펌웨어(BIOS/UEFI)를 Kernel Mode에서 실행
+2. **BIOS/UEFI**: 하드웨어 초기화 및 부트 로더 로딩 (Kernel Mode)
+3. **Boot Loader**: 디스크에서 OS 커널을 메모리로 로드 (Kernel Mode)
+4. **OS Init**: 커널 초기화 및 시스템 서비스 시작 (Kernel Mode)
 5. **User Space**: User Mode로 전환하여 응용 프로그램 실행
 
 부팅이 끝나면 CPU는 User Mode에 있고, OS는 Timer Interrupt를 통해 주기적으로 제어권을 되찾는다.

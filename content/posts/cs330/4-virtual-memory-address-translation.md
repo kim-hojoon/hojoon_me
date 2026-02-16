@@ -165,35 +165,13 @@ Address Space              Physical Memory
 
 ## 5. 정적 재배치 (Static Relocation)
 
-초기 해결책은 **정적 재배치(Static Relocation)**였습니다. 로더(loader)가 프로그램을 메모리에 로드할 때 주소를 다시 쓰는(rewrite) 방식입니다.
+초기 해결책은 **정적 재배치(Static Relocation)**였습니다. 로더(loader)가 프로그램을 메모리에 로드할 때 주소를 다시 쓰는(rewrite) 방식입니다. OS가 프로그램을 특정 메모리 위치(예: 0x1000)에 로드하기로 결정하면, 로더가 모든 정적 데이터와 함수의 주소를 재작성합니다.
 
-```text
-Original Program          Relocated Program
-┌──────────────────┐     ┌──────────────────┐ 0x1000
-│ 0x0010: movl     │     │ 0x1010: movl     │
-│         0x0200,  │     │         0x1200,  │
-│         %eax     │     │         %eax     │
-│ 0x0015: addl $1, │     │ 0x1015: addl $1, │
-│         %eax     │ ──▶ │         %eax     │
-│ 0x0018: movl     │     │ 0x0018: movl     │
-│         %eax,    │     │         %eax,    │
-│         0x0200   │     │         0x1200   │
-│                  │     │                  │
-│ 0x0200: 0        │     │ 0x1200: 0        │
-└──────────────────┘     └──────────────────┘
-        0                     0x5000
-```
-
-OS가 프로그램을 메모리 위치 0x1000에 로드하기로 결정하면, 로더가 모든 정적 데이터와 함수의 주소를 재작성합니다.
-
-### 정적 재배치의 문제점
-
-**장점:**
-- 하드웨어 지원이 필요 없음
+**장점:** 하드웨어 지원이 필요 없음
 
 **단점:**
-- **보호 불가능**: 프로세스가 OS나 다른 프로세스의 메모리 영역을 파괴할 수 있습니다. 어떤 메모리 주소든 읽을 수 있어 프라이버시가 없습니다.
-- **재배치 불가능**: 주소 공간이 배치된 후에는 이동시킬 수 없습니다. 외부 단편화(external fragmentation)로 인해 새 프로세스를 할당하지 못할 수 있습니다.
+- **보호 불가능**: 프로세스가 OS나 다른 프로세스의 메모리 영역을 파괴할 수 있음
+- **재배치 불가능**: 주소 공간이 배치된 후에는 이동시킬 수 없어 외부 단편화 문제 발생
 
 ## 6. 동적 재배치 (Dynamic Relocation) - Base and Bounds
 
@@ -272,91 +250,11 @@ Address Space               Physical Memory
 
 OS는 Base-and-Bounds 방식을 구현하기 위해 세 가지 시점에서 개입합니다:
 
-**1. 프로세스가 실행을 시작할 때 (Process Starts Running):**
+**1. 프로세스가 실행을 시작할 때:** Free list를 조회하여 새로운 주소 공간을 위한 공간을 할당합니다.
 
-새로운 주소 공간을 위한 공간을 찾아야 합니다. **Free list**를 사용합니다.
+**2. 프로세스가 종료될 때:** 메모리를 free list에 반환합니다.
 
-```text
-                              Physical Memory
-The OS lookup the free list   ┌─────────────┐ 0KB
-                              │Operating Sys│
-    Free list                 ├─────────────┤ 16KB
-       │                      │ (not in use)│
-       ↓                      ├─────────────┤ 32KB
-    ┌────┐                    │    Code     │
-    │16KB│            48KB    │    Heap     │
-    └─┬──┘                    │      ↓      │
-      ↓                       │ (allocated  │
-    ┌────┐                    │but not used)│
-    │48KB│                    ├─────────────┤ 48KB
-    └────┘                    │    Stack    │
-                              ├─────────────┤ 64KB
-                              │ (not in use)│
-                              └─────────────┘
-```
-
-**2. 프로세스가 종료될 때 (Process Is Terminated):**
-
-메모리를 free list에 반환합니다.
-
-```text
-Free list     0KB               Free list     0KB
-   ↓          ┌─────────────┐      ↓          ┌─────────────┐
-┌────┐        │Operating Sys│   ┌────┐        │Operating Sys│
-│16KB│        ├─────────────┤   │16KB│        ├─────────────┤
-└─┬──┘  16KB  │ (not in use)│   └─┬──┘  16KB  │ (not in use)│
-  ↓           ├─────────────┤     ↓           ├─────────────┤
-┌────┐  32KB  │             │   ┌────┐  32KB  │ (not in use)│
-│48KB│        │ Process A   │   │32KB│        ├─────────────┤
-└────┘        │             │   └─┬──┘  48KB  │             │
-              ├─────────────┤     ↓           │             │
-        48KB  │ (not in use)│   ┌────┐        │             │
-              └─────────────┘   │48KB│        │             │
-        64KB  Physical Memory   └────┘  64KB  └─────────────┘
-                                        Physical Memory
-```
-
-**3. 컨텍스트 스위치가 발생할 때 (Context Switch Occurs):**
-
-PCB(Process Control Block)에 Base-and-Bounds 쌍을 저장하고 복원합니다.
-
-```text
-                                    Process A PCB
-                                    ┌──────────────┐
-Context Switching    0KB            │     ...      │
-─────────────────→   ┌─────────────┐│ base : 32KB  │
-                     │Operating Sys││ bounds: 48KB │
-              16KB   ├─────────────┤│     ...      │
-                     │ (not in use)│└──────────────┘
-              32KB   ├─────────────┤   base    base
-                     │             │   32KB    48KB
-              48KB   │ Process A   │ ┌────┐  ┌────┐
-                     │  Currently  │ │    │  │    │
-                     │   Running   │ └────┘  └────┘
-              48KB   ├─────────────┤ bounds  bounds
-                     │             │   48KB    64KB
-                     │ Process B   │ ┌────┐  ┌────┐
-              64KB   └─────────────┘ │    │  │    │
-                     Physical Memory └────┘  └────┘
-
-              ──────────────────────────────────→
-
-                     0KB
-                     ┌─────────────┐
-                     │Operating Sys│
-              16KB   ├─────────────┤
-                     │ (not in use)│   base
-              32KB   ├─────────────┤   48KB
-                     │ Process A   │ ┌────┐
-                     │             │ │    │
-              48KB   ├─────────────┤ └────┘
-                     │             │ bounds
-                     │ Process B   │   64KB
-                     │  Currently  │ ┌────┐
-              64KB   │   Running   │ │    │
-                     └─────────────┘ └────┘
-                     Physical Memory
-```
+**3. 컨텍스트 스위치가 발생할 때:** PCB(Process Control Block)에 Base-and-Bounds 쌍을 저장하고 복원합니다. 프로세스 전환 시 하드웨어 레지스터에 새로운 Base와 Bounds 값을 로드합니다.
 
 ### 6.4 Base and Bounds의 장단점
 
@@ -489,51 +387,17 @@ Virtual Address Space         Physical Memory
 - **외부 단편화(External Fragmentation)**: 가변 크기 세그먼트로 인해 물리 메모리에 구멍이 생깁니다.
 
 ```text
-Memory Allocation History:
-
-Time 1: Allocate A (4KB)    Time 2: Allocate B (8KB)
-┌───────────┐ 0KB           ┌───────────┐ 0KB
-│     A     │               │     A     │
-│   (4KB)   │               │   (4KB)   │
-├───────────┤ 4KB           ├───────────┤ 4KB
-│           │               │     B     │
-│           │               │   (8KB)   │
-│   Free    │               │           │
-│  (20KB)   │               ├───────────┤ 12KB
-│           │               │   Free    │
-│           │               │  (12KB)   │
-└───────────┘ 24KB          └───────────┘ 24KB
-
-Time 3: Allocate C (6KB)    Time 4: Deallocate B
-┌───────────┐ 0KB           ┌───────────┐ 0KB
-│     A     │               │     A     │
-│   (4KB)   │               │   (4KB)   │
-├───────────┤ 4KB           ├───────────┤ 4KB
-│     B     │               │           │
-│   (8KB)   │               │   Free    │
-│           │               │   (8KB)   │
-├───────────┤ 12KB          │           │
-│     C     │               ├───────────┤ 12KB
-│   (6KB)   │               │     C     │
-├───────────┤ 18KB          │   (6KB)   │
-│   Free    │               ├───────────┤ 18KB
-│   (6KB)   │               │   Free    │
-└───────────┘ 24KB          │   (6KB)   │
-                            └───────────┘ 24KB
-
-Time 5: Try to allocate D (9KB) - FAILED!
+Initial State (after A, B, C allocated, then B deallocated):
 ┌───────────┐ 0KB
 │     A     │     Total free space: 8KB + 6KB = 14KB
-│   (4KB)   │     But largest contiguous block: 8KB
+│   (4KB)   │     But cannot allocate 9KB!
 ├───────────┤ 4KB
-│           │     → Cannot allocate D (9KB)
-│   Free    │     → External Fragmentation!
-│   (8KB)   │
-│           │
+│   Free    │     → Largest contiguous block: 8KB
+│   (8KB)   │     → External Fragmentation!
 ├───────────┤ 12KB
 │     C     │     Solution: Compaction
-│   (6KB)   │     (move segments to consolidate
-├───────────┤ 18KB  free space)
+│   (6KB)   │     (move segments to consolidate free space)
+├───────────┤ 18KB
 │   Free    │
 │   (6KB)   │
 └───────────┘ 24KB

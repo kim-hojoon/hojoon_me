@@ -75,233 +75,64 @@ HDD는 기계적(mechanical) 부품과 전자(electronic) 부품으로 구성된
 
 ### 디스크 주소 지정
 
-**CHS (Cylinder-Head-Sector) 방식**:
-- 각 블록을 `<Cylinder #, Head #, Sector #>`로 주소 지정
-- OS가 디스크의 물리적 구조를 알아야 함
+**CHS (Cylinder-Head-Sector)**: 물리적 위치 `<Cylinder #, Head #, Sector #>`로 직접 지정
 
-**LBA (Logical Block Addressing) 방식**:
-- 디스크를 논리적인 블록 배열 `[0, 1, 2, ..., N-1]`로 추상화
-- 디스크 내부에서 LBA를 물리적 위치로 매핑
-- 현대 디스크(SATA, SAS)는 LBA 사용
-
-```text
-LBA:  [0][1][2][3][4][5][6][7][8][9][10]...
-        ↓
-물리적 위치: Disk가 내부적으로 매핑
-```
+**LBA (Logical Block Addressing)**: 디스크를 논리적 블록 배열 `[0, 1, ..., N-1]`로 추상화하여 현대 디스크에서 사용
 
 ### HDD 성능 요소
 
-디스크 접근 시간은 세 가지 요소의 합으로 결정된다.
-
 **T_I/O = T_seek + T_rotation + T_transfer**
 
-#### 1) Seek Time (탐색 시간)
+- **Seek Time**: 암을 목표 실린더로 이동 (평균 4~9ms)
+- **Rotational Delay**: 섹터가 회전해 오기를 대기 (평균 = 60/RPM/2, 예: 7200 RPM → 4.2ms)
+- **Transfer Time**: 데이터 전송 (일반적으로 seek + rotation보다 훨씬 작음)
 
-디스크 암을 목표 실린더로 이동시키는 시간.
-
-- 거리에 비례하지만 순수 선형 관계는 아님 (가속/감속 필요)
-- 평균 탐색 시간은 전체 탐색 시간의 약 1/3
-- 예: Cheetah 15K.5 HDD → 평균 4ms
-
-#### 2) Rotational Delay (회전 지연)
-
-헤드가 목표 섹터가 회전해 오기를 기다리는 시간.
-
-- RPM (Revolutions Per Minute)에 의존
-- 일반 HDD: 5400, 7200 RPM
-- 서버용 HDD: 10K, 15K RPM
-
-평균 회전 지연 = (60초 / RPM) / 2
-
-예시:
-- 7200 RPM: (60 / 7200) / 2 = 4.2ms
-- 15000 RPM: (60 / 15000) / 2 = 2ms
-
-#### 3) Transfer Time (전송 시간)
-
-디스크 표면에서 데이터를 읽어 디스크 컨트롤러로 전송하고 다시 호스트로 보내는 시간.
-
-- 전송 속도에 의존 (예: 125 MB/s, 105 MB/s)
-- 일반적으로 seek + rotation보다 훨씬 작음
-
-### HDD 성능 비교 예제
-
-| 특성 | Cheetah 15K.5 | Barracuda |
-|------|---------------|-----------|
-| 용량 | 300 GB | 1 TB |
-| RPM | 15,000 | 7,200 |
-| 평균 Seek | 4 ms | 9 ms |
-| 최대 전송 속도 | 125 MB/s | 105 MB/s |
-
-**Random Read (4 KB)**:
-- Cheetah: 4ms + 2ms + 0.032ms ≈ 6ms (0.66 MB/s)
-- Barracuda: 9ms + 4.2ms + 0.037ms ≈ 13.2ms (0.31 MB/s)
-
-**Sequential Read (100 MB)**:
-- Cheetah: 100MB / 125MB = 0.8s (125 MB/s)
-- Barracuda: 100MB / 105MB = 0.95s (105 MB/s)
-
-**핵심**: Sequential 접근은 Random 접근보다 수백 배 빠르다!
+**성능 비교**: Random access는 ~6ms (seek + rotation 지배), Sequential access는 ~125 MB/s (transfer 지배) → **Sequential이 수백 배 빠름**
 
 ### I/O 스케줄링
 
-여러 I/O 요청이 큐에 대기 중일 때, 어떤 순서로 처리할 것인가?
-
-#### FCFS (First-Come-First-Served)
-
-- 도착 순서대로 처리
-- 공평하지만 성능이 떨어질 수 있음
-
-#### SSTF (Shortest Seek Time First)
-
-- 현재 헤드 위치에서 가장 가까운 요청을 먼저 처리
-- Seek time을 최소화하지만 starvation 발생 가능
-
-#### SCAN (Elevator Algorithm)
-
-- 헤드가 한 방향으로 이동하며 경로상의 모든 요청 처리
-- 끝에 도달하면 방향 전환
-- 공평성과 성능의 균형
-
-#### C-SCAN (Circular SCAN)
-
-- 한 방향으로만 요청을 처리
-- 끝에 도달하면 처음으로 빠르게 이동 (서비스 없이)
-- SCAN보다 더 균등한 대기 시간
+| 알고리즘 | 설명 | 특징 |
+|---------|------|------|
+| **FCFS** | 도착 순서대로 처리 | 공평하지만 성능 낮음 |
+| **SSTF** | 가장 가까운 요청 먼저 | Seek time 최소화, starvation 가능 |
+| **SCAN** | 한 방향 이동하며 처리, 끝에서 방향 전환 | 공평성과 성능 균형 |
+| **C-SCAN** | 한 방향만 서비스, 끝에서 처음으로 복귀 | 더 균등한 대기 시간 |
 
 ## 3. SSD (Solid State Drive)
 
-### Flash Memory 기본
+### Flash Memory 특성
 
 SSD는 NAND Flash 메모리를 사용한다. 기계 부품 없이 전자적으로만 동작한다.
 
-```text
-Block (Erase 단위)
-  ├─ Page 0 (Read/Write 단위, 보통 4KB)
-  ├─ Page 1
-  ├─ Page 2
-  └─ ...
-```
-
 **계층 구조**:
-- **Page**: Read/Write의 기본 단위 (4KB ~ 16KB)
-- **Block**: Erase의 기본 단위 (128KB ~ 256KB, 수십~수백 pages)
+- **Page**: Read/Write 단위 (4KB ~ 16KB)
+- **Block**: Erase 단위 (128KB ~ 256KB, 여러 pages 포함)
 
-### Flash Memory 특성
-
-#### Erase-Before-Write
-
-```text
-초기 상태:  [1][1][1][1][1][1][1][1]
-             ↓ write (program)
-쓰기 후:    [1][1][0][1][1][0][1][0]
-             ↓ erase
-지운 후:    [1][1][1][1][1][1][1][1]
-```
-
-- 이미 데이터가 있는 페이지에는 직접 쓸 수 없음
-- 먼저 전체 블록을 erase해야 함 (블록 전체를 1로 설정)
-- 따라서 **in-place update 불가능**
-
-#### 읽기/쓰기/지우기 비대칭
-
-- **Read**: 빠름 (~25μs)
-- **Write**: 중간 (~200μs)
-- **Erase**: 매우 느림 (~1.5ms)
-- Erase 단위(Block) > Read/Write 단위(Page)
-
-#### NAND Flash 종류
-
-| 종류 | Cell 당 비트 | Program/Erase 사이클 | 특징 |
-|------|-------------|---------------------|------|
-| SLC | 1 bit | ~100,000 | 빠르고 내구성 좋음, 비쌈 |
-| MLC | 2 bits | ~3,000 | 중간 성능, 중간 가격 |
-| TLC | 3 bits | ~1,000 | 느리고 내구성 낮음, 저렴 |
-
-#### 제약 사항
-
-- **Limited P/E cycles**: 셀의 수명이 제한적 (Wear out)
-- **Bit errors**: ECC (Error Correction Codes) 필요
-- **Bad blocks**: 공장 출하 시 또는 런타임에 발생
+**핵심 특성**:
+- **Erase-Before-Write**: 이미 쓰인 페이지는 직접 덮어쓸 수 없음, 블록 전체를 erase 후 쓰기 → **in-place update 불가능**
+- **비대칭 성능**: Read (~25μs) < Write (~200μs) << Erase (~1.5ms)
+- **제약**: P/E 사이클 제한 (SLC ~100K, MLC ~3K, TLC ~1K), Bit errors (ECC 필요), Bad blocks
 
 ### FTL (Flash Translation Layer)
 
 FTL은 Flash의 특성을 숨기고 일반 블록 디바이스처럼 보이게 하는 소프트웨어 계층이다.
 
-```text
-File System
-     ↓ (Logical Block Address)
-    FTL
-     ↓ (Physical Page Address)
- Flash Memory
-```
-
 **주요 기능**:
 
-1. **Address Mapping**: Logical → Physical 주소 변환
-2. **Wear Leveling**: 모든 블록이 균등하게 소모되도록 관리
-3. **Garbage Collection**: 무효화된 페이지를 포함한 블록을 재활용
-
-#### Address Mapping 예제
-
-Flash는 in-place update가 불가능하므로 수정 시 새 위치에 쓰고 mapping table을 업데이트한다.
-
-```text
-Page Map Table        Physical Flash
- LPN | PPN           PBN 0: [0][1][2][8]
-  0  |  0            PBN 1: [4][5][9][3]
-  1  |  1            PBN 2: [X][X][X][X]
-  2  |  2
-  3  |  7            X: Invalid (old data)
-  4  |  4
-  5  |  8            ← 새로 쓴 페이지 5
-```
-
-논리 페이지 5를 수정하려면:
-1. 새 물리 페이지(예: PBN 1의 페이지 2)에 쓰기
-2. Page Map Table 업데이트: LPN 5 → PPN 8
-3. 이전 물리 페이지(PBN 1의 페이지 1)는 무효화
-
-### Garbage Collection
-
-무효화된 페이지가 쌓이면 새로운 쓰기 공간이 부족해진다. GC는 유효한 페이지만 복사하여 블록을 재활용한다.
-
-```text
-Before GC:
-Block 0: [Valid][Valid][Invalid][Valid]
-Block 1: [Invalid][Valid][Invalid][Invalid]
-
-After GC:
-Block 0: [Valid][Valid][Valid][Valid]  ← 유효 페이지 모음
-Block 1: [Erased] ← 재사용 가능
-```
-
-### Wear Leveling
-
-모든 블록이 균등하게 사용되도록 FTL이 자주 쓰지 않는 블록으로도 데이터를 분산시킨다.
+1. **Address Mapping**: Logical → Physical 주소 변환. In-place update 불가하므로 수정 시 새 위치에 쓰고 mapping table 업데이트
+2. **Garbage Collection**: 무효화된 페이지가 쌓인 블록에서 유효 페이지만 복사하여 블록 재활용
+3. **Wear Leveling**: 모든 블록이 균등하게 소모되도록 데이터 분산
 
 ### HDD vs SSD 비교
 
 | 특성 | SSD (Samsung 850 Evo) | HDD (Seagate M9T) |
 |------|----------------------|-------------------|
-| 용량 | 2TB | 2TB |
-| Form Factor | 2.5", 66g | 2.5", 130g |
-| DRAM | 2 GB | 32 MB |
-| 인터페이스 | SATA-3 (6.0 Gbps) | SATA-3 (6.0 Gbps) |
-| 소비 전력 | 3.7 / 4.7 / 0.05 W | 2.3 / 0.7 / 0.18 W |
 | Sequential Read | 544 MB/s | 124 MB/s |
-| Sequential Write | 520 MB/s | 124 MB/s |
 | Random Read (4KB) | 97,687 IOPS | 56 IOPS |
 | Random Write (4KB) | 89,049 IOPS | 98 IOPS |
-| 평균 Seek | - | 12/14 ms |
-| 평균 Latency | - | 5.6 ms |
-| 가격 | 940,910원 (470원/GB) | 175,900원 (88원/GB) |
+| 가격 (2TB 기준) | 470원/GB | 88원/GB |
 
-**핵심**:
-- SSD는 Random access에서 압도적 (IOPS 수천 배 차이)
-- HDD는 가격 대비 용량에서 여전히 우위
-- SSD는 Sequential/Random 성능 차이가 HDD보다 작음
+**핵심**: SSD는 Random access에서 압도적 (IOPS 수천 배 차이), HDD는 가격 대비 용량 우위
 
 ## 4. 파일 시스템 (File System)
 
@@ -474,24 +305,15 @@ D: Data blocks
 
 #### Bitmaps
 
-각 블록/inode의 사용 여부를 비트로 표시한다.
-
-- **Inode bitmap**: 각 비트는 inode가 사용 중(1) 또는 free(0)
-- **Data bitmap**: 각 비트는 data block이 사용 중(1) 또는 free(0)
-
-한 블록(4KB = 32768 bits)의 bitmap으로 최대 4096개 블록/inode를 추적 가능.
+각 블록/inode의 사용 여부를 비트로 표시. Inode bitmap과 Data bitmap으로 구성.
 
 #### Inode Table
 
-모든 inode를 저장하는 영역.
-
-- 각 inode는 고정 크기 (보통 128B 또는 256B)
-- 4KB 블록에 256B inode라면 16개 inode 저장 가능
-- 총 80개 inode라면 5개 블록 필요
+모든 inode 저장. 각 inode는 고정 크기 (128B 또는 256B).
 
 #### Data Blocks
 
-실제 파일/디렉토리 내용을 저장하는 영역. 디스크의 대부분을 차지한다.
+실제 파일/디렉토리 내용 저장. 디스크의 대부분을 차지.
 
 ## 6. Inode 구조와 Multi-level Indexing
 
@@ -532,72 +354,25 @@ Inode는 파일의 데이터 블록 위치를 포인터 배열로 저장한다. 
 
 ### VSFS Inode 예제
 
-**설정**:
-- Inode에 12개 direct pointer + 1개 single indirect pointer
-- 4-byte disk address (포인터)
-- 4KB 블록 크기
-- 따라서 한 블록에 1024개 포인터 저장 가능
+**설정**: 12 direct + 1 single indirect pointer, 4KB 블록, 4-byte 포인터 → 한 블록에 1024 포인터
 
-**최대 파일 크기**:
-- Direct: 12 × 4KB = 48KB
-- Single indirect: 1024 × 4KB = 4MB
-- **Total**: (12 + 1024) × 4KB = 4144KB ≈ 4MB
-
-더 큰 파일을 지원하려면 double/triple indirect pointer를 추가한다.
+**최대 파일 크기**: Direct 48KB + Indirect 4MB = 약 4MB. 더 큰 파일은 double/triple indirect 추가.
 
 ### 파일 읽기 예제
 
-VSFS에서 `/foo/bar` 파일의 처음 3개 블록을 읽는 과정:
+`/foo/bar` 읽기 과정:
 
-#### 1) open("/foo/bar")
+**open("/foo/bar")**: 루트 inode → 루트 데이터에서 `foo` 검색 → `foo` inode → `foo` 데이터에서 `bar` 검색 → `bar` inode 캐싱
 
-| 작업 | 읽는 블록 |
-|------|----------|
-| 루트 `/` 디렉토리의 inode 읽기 | Inode bitmap, Inode[2] |
-| 루트 디렉토리 데이터에서 `foo` 검색 | Data block |
-| `foo` inode 읽기 | Inode[X] |
-| `foo` 디렉토리 데이터에서 `bar` 검색 | Data block |
-| `bar` inode 읽기 | Inode[Y] |
-| `bar` inode 내용을 메모리에 캐싱 | - |
+**read()**: 캐싱된 `bar` inode에서 data block 주소 획득 → 데이터 블록들 읽기
 
-#### 2) read()
-
-| 작업 | 읽는 블록 |
-|------|----------|
-| `bar` inode에서 data block 주소 획득 (캐싱됨) | - |
-| Data block 0 읽기 | Data[A] |
-| Data block 1 읽기 | Data[B] |
-| Data block 2 읽기 | Data[C] |
-
-경로 탐색은 open() 시 한 번만 수행되고, read()는 데이터만 읽으면 된다.
+경로 탐색은 open() 시 한 번만 수행.
 
 ### 파일 쓰기
 
-새 파일 `/foo/bar`를 생성하고 3개 블록을 쓰는 과정:
+**create("/foo/bar")**: 경로 탐색 → Inode bitmap 수정 → 새 inode 할당/초기화 → `foo` 디렉토리에 엔트리 추가
 
-#### 1) create("/foo/bar")
-
-| 작업 | 읽는 블록 | 쓰는 블록 |
-|------|----------|----------|
-| 루트 inode 읽기 | Inode[2] | - |
-| 루트 디렉토리 데이터 읽기 | Data block | - |
-| `foo` inode 읽기 | Inode[X] | - |
-| `foo` 디렉토리 데이터 읽기 | Data block | - |
-| Inode bitmap 읽기/수정 | Inode bitmap | Inode bitmap |
-| 새 inode 할당 및 초기화 | - | Inode[Y] |
-| `foo` 디렉토리에 `bar` 엔트리 추가 | - | Data block |
-
-#### 2) write()
-
-각 write() 호출마다:
-
-| 작업 | 읽는 블록 | 쓰는 블록 |
-|------|----------|----------|
-| Data bitmap 읽기/수정 | Data bitmap | Data bitmap |
-| Data block 할당 및 쓰기 | - | Data[A] |
-| `bar` inode 업데이트 (size, 포인터) | - | Inode[Y] |
-
-3번의 write()이면 위 과정을 3번 반복.
+**write()**: 각 호출마다 Data bitmap 수정 → Data block 할당/쓰기 → Inode 업데이트 (size, 포인터)
 
 ### 캐싱 (Page Cache)
 
@@ -612,77 +387,13 @@ VSFS에서 `/foo/bar` 파일의 처음 3개 블록을 읽는 과정:
 
 ## 7. 파일 할당 방식
 
-파일의 데이터 블록을 디스크에 어떻게 배치할 것인가?
-
-### Contiguous Allocation (연속 할당)
-
-파일을 연속된 블록에 할당.
-
-```text
-[ ][A][A][A][ ][B][B][B][B][C][C][C][ ][ ]
-```
-
-- **Metadata**: `<starting block #, length>`
-- **장점**: Sequential access 성능 우수, 간단한 random access
-- **단점**: 심각한 외부 단편화(external fragmentation), 파일 크기 증가 어려움
-- **예**: CD-ROM, IBM OS/360
-
-### Linked Allocation (연결 할당)
-
-각 블록이 다음 블록의 포인터를 포함.
-
-```text
-[ ][ ][A]→[A]→[A][ ][B]→[B]→[C]→[C]→[B]→[B][ ][C]
-```
-
-- **Metadata**: `<starting block #>`
-- **장점**: 외부 단편화 없음, 파일 크기 증가 용이
-- **단점**: Random access 느림, 포인터 공간 낭비, 포인터 손상 시 데이터 손실
-- **예**: TOPS-10, Alto
-
-### File Allocation Table (FAT)
-
-Linked allocation의 변형. 모든 포인터를 별도 테이블(FAT)에 저장.
-
-```text
-[ ][ ][A][A][A][ ][B][B][C][C][B][B][ ][C]
-
-FAT:
-[0][0][19][20][-1][0][23][26][25][29][27][-1][0][-1]
- 16 17 18  19  20  21 22  23  24  25  26  27 28  29
-```
-
-- **FAT은 메모리에 캐싱**되므로 Random access 성능 개선
-- **예**: MS-DOS, Windows (FAT12, FAT16, FAT32)
-
-### Indexed Allocation (인덱싱 할당)
-
-각 파일에 포인터 배열(index block)을 할당.
-
-```text
-Index block for "jeep":
-[19][-1][-1][-1]...
-
-Disk:
-[ ][ ][ ]...[19][data]...
-```
-
-- **장점**: 외부 단편화 없음, Random access 지원, 파일 증가 가능
-- **단점**: 작은 파일도 index block 필요 (메타데이터 오버헤드)
-- **해결책**: Multi-level indexing (Unix FFS, Ext2/3)
-
-### Extent-based Allocation
-
-여러 개의 연속 영역(extent)을 할당.
-
-```text
-Extent = <starting block #, length>
-
-File X: [(18, 3), (23, 4), (29, 1)]
-```
-
-- **장점**: 메타데이터 오버헤드 감소, sequential access 성능 좋음
-- **예**: Linux Ext4, XFS
+| 방식 | 장점 | 단점 | 사용 예 |
+|------|------|------|---------|
+| **Contiguous** (연속) | Sequential 성능 우수 | 외부 단편화 심각, 크기 증가 어려움 | CD-ROM |
+| **Linked** (연결) | 단편화 없음, 크기 증가 용이 | Random access 느림, 포인터 손상 위험 | TOPS-10 |
+| **FAT** (연결 변형) | Random access 개선 (메모리 캐싱) | FAT 크기 제한 | MS-DOS, Windows |
+| **Indexed** (인덱싱) | Random access 지원, 단편화 없음 | 작은 파일도 index block 필요 | Unix FFS, Ext2/3 (multi-level) |
+| **Extent-based** | 메타데이터 오버헤드 감소, Sequential 성능 좋음 | 일부 단편화 가능 | Ext4, XFS |
 
 ## 8. 디렉토리 구현
 
@@ -702,17 +413,7 @@ File X: [(18, 3), (23, 4), (29, 1)]
 └─────────────────────────────────┘
 ```
 
-- **Variable-sized names** 지원 (Linux Ext2와 유사)
-- **Record length**: 다음 엔트리까지의 바이트 수
-- **Name length**: 실제 파일 이름 길이
-
-파일을 찾으려면 디렉토리를 **선형 탐색(linear search)**해야 한다.
-
-### 디렉토리 최적화
-
-- **정렬**: 이진 탐색 가능 (하지만 삽입/삭제 비용 증가)
-- **해시 테이블**: 빠른 검색, 확장성 문제
-- **B-tree**: 대규모 디렉토리에 유용
+Variable-sized names 지원. 파일 검색은 선형 탐색. 최적화: 정렬(이진 탐색), 해시 테이블, B-tree(대규모 디렉토리)
 
 ## 9. 정리
 
